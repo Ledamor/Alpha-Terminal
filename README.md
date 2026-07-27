@@ -82,3 +82,27 @@ The goal of this project is to build a scalable SaaS-style application using pro
 - Asset allocation
 - Historical performance charts
 
+
+---
+
+# Getting Started
+
+
+## Requirements
+
+Install:
+
+- Node.js >= 22
+- pnpm
+- Docker
+
+
+## Clone repository
+
+
+```bash
+git clone https://github.com/Ledamor/alpha-terminal.git
+
+cd alpha-terminal
+
+
