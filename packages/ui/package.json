@@ -1,0 +1,25 @@
+{
+  "name": "@alpha/ui",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.395.0",
+    "tailwind-merge": "^2.3.0",
+    "tailwindcss": "^4.0.0",
+    "class-variance-authority": "^0.7.1"
+  },
+  "devDependencies": {
+    "@alpha/tsconfig": "workspace:*",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.4.5"
+  }
+}

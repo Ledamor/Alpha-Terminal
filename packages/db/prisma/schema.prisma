@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  role          Role      @default(USER)
+  refreshToken  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  portfolio     Portfolio?
+  orders        Order[]
+  watchlists    Watchlist[]
+  notifications Notification[]
+}
+
+model Portfolio {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance     Decimal  @default(100000.00) // Starting cash balance
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  positions   Position[]
+  orders      Order[]
+}
+
+model Position {
+  id           String    @id @default(uuid())
+  portfolioId  String
+  portfolio    Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  symbol       String
+  quantity     Decimal
+  averagePrice Decimal
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([portfolioId, symbol])
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+}
+
+enum OrderStatus {
+  PENDING
+  EXECUTED
+  CANCELLED
+  FAILED
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolioId    String
+  portfolio      Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  symbol         String
+  side           OrderSide
+  type           OrderType
+  status         OrderStatus @default(PENDING)
+  quantity       Decimal
+  limitPrice     Decimal?    
+  executionPrice Decimal?    
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Watchlist {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     WatchlistItem[]
+}
+
+model WatchlistItem {
+  id          String    @id @default(uuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  symbol      String
+  addedAt     DateTime  @default(now())
+
+  @@unique([watchlistId, symbol])
+}
+
+enum NotificationType {
+  SYSTEM
+  ALERT
+  TRADE_EXECUTION
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
