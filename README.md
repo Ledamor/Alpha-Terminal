@@ -1,3 +1,10 @@
+<<<<<<< HEAD
+
+# README
+
+Placeholder
+=======
+
 # Alpha Terminal
 
 <p align="center">
@@ -12,7 +19,6 @@ React • NestJS • PostgreSQL • Prisma • Redis • WebSockets • Docker
 
 </p>
 
-
 ## Overview
 
 Alpha Terminal is a full-stack simulated trading platform designed to replicate the experience of a professional trading environment.
@@ -22,7 +28,6 @@ Users can create accounts, monitor live market data, execute simulated trades, m
 The application does not involve real money or brokerage integration. Instead, it provides a realistic market simulation environment designed to demonstrate modern software architecture and engineering practices.
 
 The goal of this project is to build a scalable SaaS-style application using production-level technologies and patterns.
-
 
 ---
 
@@ -37,7 +42,6 @@ The goal of this project is to build a scalable SaaS-style application using pro
 - OAuth integration
 - User profiles
 
-
 ## Market Simulation
 
 - Real-time simulated stock prices
@@ -45,7 +49,6 @@ The goal of this project is to build a scalable SaaS-style application using pro
 - Historical price data
 - Market activity simulation
 - Live price broadcasting
-
 
 ## Trading System
 
@@ -56,7 +59,6 @@ The goal of this project is to build a scalable SaaS-style application using pro
 - Order execution engine
 - Trade history
 
-
 ## Portfolio Management
 
 - Virtual cash balance
@@ -65,14 +67,12 @@ The goal of this project is to build a scalable SaaS-style application using pro
 - Profit/loss tracking
 - Performance analytics
 
-
 ## Real-Time Experience
 
 - Live stock updates
 - Real-time notifications
 - WebSocket communication
 - Instant portfolio updates
-
 
 ## Analytics
 
@@ -82,11 +82,9 @@ The goal of this project is to build a scalable SaaS-style application using pro
 - Asset allocation
 - Historical performance charts
 
-
 ---
 
 # Getting Started
-
 
 ## Requirements
 
@@ -96,9 +94,7 @@ Install:
 - pnpm
 - Docker
 
-
 ## Clone repository
-
 
 ```bash
 git clone https://github.com/Ledamor/alpha-terminal.git
@@ -106,3 +102,5 @@ git clone https://github.com/Ledamor/alpha-terminal.git
 cd alpha-terminal
 
 
+>>>>>>> b3db5e8f34436d851616013afc627edbc2900c62
+```
