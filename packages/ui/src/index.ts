@@ -1,4 +1,9 @@
-// Export utils
+// Utils
 export * from "./lib/utils";
 
-// Export components (to be added)
+// Components
+export * from "./components/ui/button";
+export * from "./components/ui/card";
+export * from "./components/ui/badge";
+export * from "./components/ui/table";
+export * from "./components/ui/avatar";

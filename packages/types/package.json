@@ -7,6 +7,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@alpha/validation": "workspace:*"
+  },
   "devDependencies": {
     "@alpha/tsconfig": "workspace:*",
     "typescript": "^5.4.5"
