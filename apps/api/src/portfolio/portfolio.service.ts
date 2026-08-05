@@ -45,14 +45,14 @@ export class PortfolioService {
         let currentPrice = Number(pos.averagePrice);
         try {
           currentPrice = await this.marketService.getCurrentPrice(pos.symbol);
-        } catch (e) {
+        } catch {
           // Fallback to average price if market price is unavailable
         }
 
         const quantity = Number(pos.quantity);
         const averagePrice = Number(pos.averagePrice);
         const currentValue = quantity * currentPrice;
-        const pnl = currentValue - (quantity * averagePrice);
+        const pnl = currentValue - quantity * averagePrice;
 
         totalPositionsValue += currentValue;
         totalPositionsPnl += pnl;

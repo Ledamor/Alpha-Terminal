@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@alpha/ui'
-import { ArrowUpRight, ArrowDownRight, Activity, DollarSign, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, Activity, DollarSign, Wallet } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 // Mock Data for the Portfolio Chart (still mocked as we don't store historical portfolio values)
@@ -28,6 +28,24 @@ const portfolioData = [
   { name: '13', value: 122000 },
   { name: '14', value: 124532 },
 ]
+
+interface Asset {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+}
+
+interface Order {
+  id: string;
+  side: string;
+  quantity: number;
+  symbol: string;
+  type: string;
+  executionPrice: number;
+  createdAt: string;
+}
 
 export const Route = createFileRoute('/_dashboard/dashboard')({
   component: Dashboard,
@@ -197,7 +215,7 @@ function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topAssets.map((asset: any) => (
+                {topAssets.map((asset: Asset) => (
                   <div key={asset.symbol} className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium leading-none">{asset.symbol}</p>
@@ -223,7 +241,7 @@ function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {orders && orders.length > 0 ? orders.map((order: any) => (
+                {orders && orders.length > 0 ? orders.map((order: Order) => (
                   <div key={order.id} className="flex items-start gap-4">
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border ${order.side === 'BUY' ? 'bg-primary/10 border-primary/20' : 'bg-red-500/10 border-red-500/20'}`}>
                       <span className={`text-xs font-bold ${order.side === 'BUY' ? 'text-primary' : 'text-red-500'}`}>{order.side}</span>
