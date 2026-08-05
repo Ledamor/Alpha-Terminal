@@ -46,8 +46,9 @@ function RegisterPage() {
       })
     },
     onError: (err: AxiosError) => {
-      if (err.response?.data && (err.response.data as any).message) {
-        setError(Array.isArray((err.response.data as any).message) ? (err.response.data as any).message.join(', ') : (err.response.data as any).message)
+      const data = err.response?.data as { message?: string | string[] } | undefined
+      if (data?.message) {
+        setError(Array.isArray(data.message) ? data.message.join(', ') : data.message)
       } else {
         setError('An unexpected error occurred. Is the API server running?')
       }

@@ -43,8 +43,9 @@ function LoginPage() {
       navigate({ to: '/dashboard' })
     },
     onError: (err: AxiosError) => {
-      if (err.response?.data && (err.response.data as any).message) {
-        setError((err.response.data as any).message)
+      const data = err.response?.data as { message?: string | string[] } | undefined
+      if (data?.message) {
+        setError(Array.isArray(data.message) ? data.message.join(', ') : data.message)
       } else {
         setError('An unexpected error occurred. Is the API server running?')
       }

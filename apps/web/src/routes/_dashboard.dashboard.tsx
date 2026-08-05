@@ -128,7 +128,7 @@ function Dashboard() {
                       color: 'hsl(var(--foreground))'
                     }}
                     itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}
-                    formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Equity']}
+                    formatter={(value: unknown) => [`$${Number(value ?? 0).toFixed(2)}`, 'Equity']}
                     labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
                   />
                   <Area 

@@ -96,8 +96,9 @@ function Market() {
       setTimeout(() => setSuccess(null), 5000)
     },
     onError: (err: AxiosError) => {
-      if (err.response?.data && (err.response.data as any).message) {
-        setError(Array.isArray((err.response.data as any).message) ? (err.response.data as any).message.join(', ') : (err.response.data as any).message)
+      const data = err.response?.data as { message?: string | string[] } | undefined
+      if (data?.message) {
+        setError(Array.isArray(data.message) ? data.message.join(', ') : data.message)
       } else {
         setError('An unexpected error occurred.')
       }
@@ -255,7 +256,7 @@ function Market() {
                         color: 'hsl(var(--foreground))'
                       }}
                       itemStyle={{ color: selectedAsset.change >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))', fontWeight: 'bold' }}
-                      formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Price']}
+                      formatter={(value: unknown) => [`$${Number(value ?? 0).toFixed(2)}`, 'Price']}
                       labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
                     />
                     <Area 
