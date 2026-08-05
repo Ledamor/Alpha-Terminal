@@ -35,4 +35,14 @@ export class TradingController {
     }
     return this.tradingService.executeOrder(userId, orderDto);
   }
+
+  @Get('orders')
+  @UseGuards(JwtAuthGuard)
+  getOrders(@Request() req: ExpressRequest) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new Error('User ID not found on authenticated request');
+    }
+    return this.tradingService.getOrders(userId);
+  }
 }
