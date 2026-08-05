@@ -6,6 +6,7 @@ import type { RegisterInput, VerifyOtpInput } from '@alpha/types'
 import { api } from '../lib/axios'
 import { useAuth } from '../contexts/auth-context'
 import { useState } from 'react'
+import { isAxiosError } from 'axios'
 
 export const Route = createFileRoute('/register')({
   component: RegisterPage,
@@ -33,8 +34,13 @@ function RegisterPage() {
       setEmailToVerify(data.email)
       otpForm.setValue('email', data.email)
       setStep('otp')
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to register')
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const message = err.response?.data?.message
+        setError(Array.isArray(message) ? message.join(', ') : message || 'Failed to register')
+      } else {
+        setError('Failed to register')
+      }
     }
   }
 
@@ -44,8 +50,13 @@ function RegisterPage() {
       await api.post('/auth/verify-otp', data)
       await login() // Populate user state
       navigate({ to: '/market' })
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to verify OTP')
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const message = err.response?.data?.message
+        setError(Array.isArray(message) ? message.join(', ') : message || 'Failed to verify OTP')
+      } else {
+        setError('Failed to verify OTP')
+      }
     }
   }
 

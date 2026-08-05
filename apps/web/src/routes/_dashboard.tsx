@@ -1,8 +1,8 @@
 import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Briefcase, LineChart, Settings, Bell, Search, LogOut } from 'lucide-react'
+import { LayoutDashboard, Briefcase, LineChart, Settings, Bell, Search, LogOut, Menu, X } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@alpha/ui'
 import { useAuth } from '../contexts/auth-context'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/axios'
 
@@ -11,6 +11,7 @@ export const Route = createFileRoute('/_dashboard')({
 })
 
 function DashboardLayout() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -33,18 +34,30 @@ function DashboardLayout() {
 
   return (
     <div className="flex min-h-screen w-full">
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 flex-col border-r border-border bg-card md:flex">
-        <div className="flex h-14 items-center border-b border-border px-4 lg:h-[60px] lg:px-6">
-          <Link to="/dashboard" className="flex items-center gap-2 font-bold text-xl text-primary">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 flex-col border-r border-border bg-card transition-transform duration-300 md:flex md:translate-x-0 ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden -translate-x-full'}`}>
+        <div className="flex h-14 items-center justify-between border-b border-border px-4 lg:h-[60px] lg:px-6">
+          <Link to="/dashboard" className="flex items-center gap-2 font-bold text-xl text-primary" onClick={() => setIsMobileMenuOpen(false)}>
             Alpha Terminal
           </Link>
+          <button className="md:hidden p-1 text-muted-foreground hover:text-foreground" onClick={() => setIsMobileMenuOpen(false)}>
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <div className="flex-1 overflow-auto py-2">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4 gap-1">
             <Link
               to="/dashboard"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground [&.active]:bg-muted [&.active]:text-foreground"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <LayoutDashboard className="h-4 w-4" />
               Dashboard
@@ -52,6 +65,7 @@ function DashboardLayout() {
             <Link
               to="/portfolio"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground [&.active]:bg-muted [&.active]:text-foreground"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <Briefcase className="h-4 w-4" />
               Portfolio
@@ -59,6 +73,7 @@ function DashboardLayout() {
             <Link
               to="/market"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground [&.active]:bg-muted [&.active]:text-foreground"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <LineChart className="h-4 w-4" />
               Market
@@ -70,6 +85,7 @@ function DashboardLayout() {
             <Link
               to="/dashboard"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <Settings className="h-4 w-4" />
               Settings
@@ -83,7 +99,13 @@ function DashboardLayout() {
         {/* Header */}
         <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-4 lg:h-[60px] lg:px-6 justify-between">
           <div className="flex items-center gap-4">
-            <div className="relative">
+            <button 
+              className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="relative hidden sm:block">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 type="search"

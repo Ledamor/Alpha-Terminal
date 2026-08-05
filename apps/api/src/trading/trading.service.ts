@@ -145,7 +145,9 @@ export class TradingService {
           quantity,
           executionPrice,
           totalCost,
-          newBalance: Number(portfolio.balance) + (side === 'SELL' ? totalCost : -totalCost),
+          newBalance:
+            Number(portfolio.balance) +
+            (side === 'SELL' ? totalCost : -totalCost),
         },
       };
     });

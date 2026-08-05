@@ -1,15 +1,6 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UsePipes,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import type { Request as ExpressRequest } from 'express';
 import { TradingService } from './trading.service';
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { executeOrderSchema } from '@alpha/validation';
 import type { ExecuteOrderInput } from '@alpha/types';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 

@@ -73,7 +73,7 @@ export class AuthService {
 
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
-    
+
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, { expiresIn: '15m' }),
       this.jwtService.signAsync(payload, { expiresIn: '7d' }),
@@ -94,9 +94,12 @@ export class AuthService {
     });
 
     if (!user) throw new BadRequestException('User not found');
-    if (user.isVerified) throw new BadRequestException('User is already verified');
-    if (user.otpCode !== verifyOtpDto.code) throw new BadRequestException('Invalid OTP code');
-    if (!user.otpExpiresAt || user.otpExpiresAt < new Date()) throw new BadRequestException('OTP code has expired');
+    if (user.isVerified)
+      throw new BadRequestException('User is already verified');
+    if (user.otpCode !== verifyOtpDto.code)
+      throw new BadRequestException('Invalid OTP code');
+    if (!user.otpExpiresAt || user.otpExpiresAt < new Date())
+      throw new BadRequestException('OTP code has expired');
 
     // Mark as verified, clear OTP, and create their Portfolio
     await this.prisma.$transaction(async (tx) => {
@@ -126,11 +129,16 @@ export class AuthService {
     });
 
     if (!user) throw new UnauthorizedException('Invalid credentials');
-    
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
-    if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
-    
-    if (!user.isVerified) throw new UnauthorizedException('Please verify your email address first');
+
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.passwordHash,
+    );
+    if (!isPasswordValid)
+      throw new UnauthorizedException('Invalid credentials');
+
+    if (!user.isVerified)
+      throw new UnauthorizedException('Please verify your email address first');
 
     return this.generateTokens(user.id, user.email);
   }
@@ -138,8 +146,11 @@ export class AuthService {
   async refresh(token: string) {
     try {
       // Verify token signature and expiration
-      const payload = await this.jwtService.verifyAsync(token);
-      
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        email: string;
+      }>(token);
+
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
       });
