@@ -35,7 +35,7 @@ export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  emitOrderExecuted(order: any) {
+  emitOrderExecuted(order: unknown) {
     // In a real app we'd emit to the specific user room
     this.server.emit('ORDER_EXECUTED', order);
   }
