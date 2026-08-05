@@ -10,6 +10,7 @@ import {
   VerifyOtpInput,
   JSendResponse,
 } from '@alpha/types';
+import type { User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 
@@ -23,17 +24,17 @@ export class AuthService {
   async register(
     registerDto: RegisterInput,
   ): Promise<JSendResponse<{ email: string }>> {
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = (await this.prisma.user.findUnique({
       where: { email: registerDto.email },
-    });
+    })) as User | null;
 
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const existingUsername = await this.prisma.user.findUnique({
+    const existingUsername = (await this.prisma.user.findUnique({
       where: { username: registerDto.username },
-    });
+    })) as User | null;
 
     if (existingUsername) {
       throw new BadRequestException('Username is already taken');
@@ -74,9 +75,9 @@ export class AuthService {
   async verifyOtp(
     verifyOtpDto: VerifyOtpInput,
   ): Promise<JSendResponse<{ token: string }>> {
-    const user = await this.prisma.user.findUnique({
+    const user = (await this.prisma.user.findUnique({
       where: { email: verifyOtpDto.email },
-    });
+    })) as User | null;
 
     if (!user) {
       throw new BadRequestException('User not found');
@@ -123,9 +124,9 @@ export class AuthService {
   }
 
   async login(loginDto: LoginInput): Promise<JSendResponse<{ token: string }>> {
-    const user = await this.prisma.user.findUnique({
+    const user = (await this.prisma.user.findUnique({
       where: { email: loginDto.email },
-    });
+    })) as User | null;
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
