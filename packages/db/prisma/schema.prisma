@@ -3,22 +3,21 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum Role {
-  USER
-  ADMIN
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
-  id            String    @id @default(uuid())
+  id            String    @id @default(cuid())
   email         String    @unique
+  username      String    @unique
   passwordHash  String
   firstName     String?
   lastName      String?
-  role          Role      @default(USER)
+  role          String    @default("USER") // Emulating Role enum: USER, ADMIN
+  isVerified    Boolean   @default(false)
+  otpCode       String?
+  otpExpiresAt  DateTime?
   refreshToken  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -54,23 +53,6 @@ model Position {
   @@unique([portfolioId, symbol])
 }
 
-enum OrderSide {
-  BUY
-  SELL
-}
-
-enum OrderType {
-  MARKET
-  LIMIT
-}
-
-enum OrderStatus {
-  PENDING
-  EXECUTED
-  CANCELLED
-  FAILED
-}
-
 model Order {
   id             String      @id @default(uuid())
   userId         String
@@ -78,9 +60,9 @@ model Order {
   portfolioId    String
   portfolio      Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   symbol         String
-  side           OrderSide
-  type           OrderType
-  status         OrderStatus @default(PENDING)
+  side           String      // BUY, SELL
+  type           String      // MARKET, LIMIT
+  status         String      @default("PENDING") // PENDING, EXECUTED, CANCELLED, FAILED
   quantity       Decimal
   limitPrice     Decimal?    
   executionPrice Decimal?    
@@ -109,19 +91,13 @@ model WatchlistItem {
   @@unique([watchlistId, symbol])
 }
 
-enum NotificationType {
-  SYSTEM
-  ALERT
-  TRADE_EXECUTION
-}
-
 model Notification {
   id        String           @id @default(uuid())
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
-  type      NotificationType
+  type      String           // SYSTEM, ALERT, TRADE_EXECUTION
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
 }

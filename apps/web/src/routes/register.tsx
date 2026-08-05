@@ -7,44 +7,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter, 
 import { Activity, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/auth-context'
 
-export const Route = createFileRoute('/')({
-  component: LoginPage,
+export const Route = createFileRoute('/register')({
+  component: RegisterPage,
 })
 
-function LoginPage() {
-  const [email, setEmail] = useState('test@example.com')
-  const [password, setPassword] = useState('password123')
+function RegisterPage() {
+  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   const navigate = useNavigate()
-  const { login, isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
 
-  // Redirect to dashboard if already logged in
   useEffect(() => {
     if (isAuthenticated) {
       navigate({ to: '/dashboard' })
     }
   }, [isAuthenticated, navigate])
 
-  const loginMutation = useMutation({
+  const registerMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post('/auth/login', {
+      const response = await api.post('/auth/register', {
         email,
-        password
+        username,
+        password,
+        confirmPassword
       })
       return response.data
     },
-    onSuccess: (data) => {
-      // data.data is the JSend data object which contains the token
-      if (data.data?.token) {
-        login(data.data.token)
-      }
-      navigate({ to: '/dashboard' })
+    onSuccess: () => {
+      // Navigate to OTP verification page and pass the email via search params
+      navigate({ 
+        to: '/verify-email', 
+        search: { email } 
+      })
     },
     onError: (err: AxiosError) => {
       if (err.response?.data && (err.response.data as any).message) {
-        setError((err.response.data as any).message)
+        setError(Array.isArray((err.response.data as any).message) ? (err.response.data as any).message.join(', ') : (err.response.data as any).message)
       } else {
         setError('An unexpected error occurred. Is the API server running?')
       }
@@ -54,7 +57,11 @@ function LoginPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    loginMutation.mutate()
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
+    registerMutation.mutate()
   }
 
   return (
@@ -65,9 +72,9 @@ function LoginPage() {
             <Activity className="h-6 w-6 text-primary" />
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold tracking-tight">Alpha Terminal</CardTitle>
+            <CardTitle className="text-3xl font-bold tracking-tight">Create an Account</CardTitle>
             <CardDescription className="text-base">
-              Sign in to access the trading simulator
+              Join Alpha Terminal today
             </CardDescription>
           </div>
         </CardHeader>
@@ -86,18 +93,30 @@ function LoginPage() {
                   className="bg-background/50 h-11"
                 />
               </div>
+
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <a href="#" className="text-sm font-medium text-primary hover:underline transition-colors">
-                    Forgot password?
-                  </a>
-                </div>
+                <Label htmlFor="username">Username</Label>
+                <Input 
+                  id="username" 
+                  type="text" 
+                  placeholder="johndoe" 
+                  required 
+                  minLength={3}
+                  maxLength={30}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="bg-background/50 h-11"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Input 
                     id="password" 
                     type={showPassword ? "text" : "password"} 
                     required 
+                    minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="bg-background/50 h-11 pr-10"
@@ -107,12 +126,22 @@ function LoginPage() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Input 
+                    id="confirmPassword" 
+                    type={showPassword ? "text" : "password"} 
+                    required 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="bg-background/50 h-11 pr-10"
+                  />
                 </div>
               </div>
             </div>
@@ -126,16 +155,16 @@ function LoginPage() {
             <Button 
               type="submit" 
               className="w-full h-11 text-base font-semibold"
-              disabled={loginMutation.isPending}
+              disabled={registerMutation.isPending}
             >
-              {loginMutation.isPending ? "Authenticating..." : "Sign in"}
+              {registerMutation.isPending ? "Creating account..." : "Sign up"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="justify-center border-t border-border/50 pt-6 text-sm text-muted-foreground">
-          Don't have an account?{' '}
-          <Link to="/register" className="font-semibold text-primary hover:underline ml-1">
-            Sign up
+          Already have an account?{' '}
+          <Link to="/" className="font-semibold text-primary hover:underline ml-1">
+            Sign in
           </Link>
         </CardFooter>
       </Card>
