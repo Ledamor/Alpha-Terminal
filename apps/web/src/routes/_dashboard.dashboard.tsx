@@ -1,4 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../lib/axios'
 import {
   Card,
   CardContent,
@@ -9,7 +11,7 @@ import {
 import { ArrowUpRight, ArrowDownRight, Activity, DollarSign, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-// Mock Data for the Portfolio Chart
+// Mock Data for the Portfolio Chart (still mocked as we don't store historical portfolio values)
 const portfolioData = [
   { name: '1', value: 100000 },
   { name: '2', value: 102000 },
@@ -32,49 +34,89 @@ export const Route = createFileRoute('/_dashboard/dashboard')({
 })
 
 function Dashboard() {
+  const { data: portfolio } = useQuery({
+    queryKey: ['portfolio'],
+    queryFn: async () => {
+      const res = await api.get('/portfolio')
+      return res.data.data
+    },
+    refetchOnWindowFocus: false,
+  })
+
+  const { data: assets } = useQuery({
+    queryKey: ['market-prices'],
+    queryFn: async () => {
+      const res = await api.get('/trading/prices')
+      return res.data.data
+    },
+    refetchOnWindowFocus: false,
+  })
+
+  const { data: orders } = useQuery({
+    queryKey: ['orders'],
+    queryFn: async () => {
+      const res = await api.get('/trading/orders')
+      return res.data.data
+    },
+    refetchOnWindowFocus: false,
+  })
+
+  const formatCurrency = (val: number | string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(Number(val))
+  }
+
+  const topAssets = assets ? assets.slice(0, 3) : []
+
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Overview</h2>
       </div>
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
+        <Card className="border-muted bg-card/50 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Equity</CardTitle>
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground">$124,532.89</div>
-            <p className="text-xs text-primary flex items-center mt-1 font-medium">
-              <TrendingUp className="mr-1 h-3 w-3" />
-              +2.5% from yesterday
+            <div className="text-2xl font-bold tracking-tight text-foreground">
+              {portfolio ? formatCurrency(portfolio.totalValue) : '...'}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 font-medium">
+              Live from portfolio
             </p>
           </CardContent>
         </Card>
         
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
+        <Card className="border-muted bg-card/50 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Return</CardTitle>
-            <Activity className="h-4 w-4 text-destructive" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total P&L</CardTitle>
+            <Activity className={portfolio && portfolio.totalPnl >= 0 ? "h-4 w-4 text-emerald-500" : "h-4 w-4 text-red-500"} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground">-$342.12</div>
-            <p className="text-xs text-destructive flex items-center mt-1 font-medium">
-              <TrendingDown className="mr-1 h-3 w-3" />
-              -0.28% today
+            <div className={`text-2xl font-bold tracking-tight ${portfolio && portfolio.totalPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+              {portfolio ? (portfolio.totalPnl >= 0 ? '+' : '') + formatCurrency(portfolio.totalPnl) : '...'}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 font-medium flex items-center">
+              All time return
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
+        <Card className="border-muted bg-card/50 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Buying Power</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground">$100,000.00</div>
+            <div className="text-2xl font-bold tracking-tight text-foreground">
+              {portfolio ? formatCurrency(portfolio.balance) : '...'}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               Available cash to trade
             </p>
@@ -86,7 +128,7 @@ function Dashboard() {
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
         
         {/* Main Chart Section */}
-        <Card className="col-span-1 lg:col-span-5 border-border/50 bg-card/50 backdrop-blur-sm">
+        <Card className="col-span-1 lg:col-span-5 border-muted bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Portfolio Performance</CardTitle>
             <CardDescription>Value over the last 14 days.</CardDescription>
@@ -149,91 +191,58 @@ function Dashboard() {
         <div className="col-span-1 lg:col-span-2 flex flex-col gap-6">
           
           {/* Watchlist */}
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <Card className="border-muted bg-card/50 backdrop-blur-sm">
             <CardHeader className="pb-4">
-              <CardTitle>Watchlist</CardTitle>
+              <CardTitle>Top Assets</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium leading-none">AAPL</p>
-                    <p className="text-xs text-muted-foreground mt-1">Apple Inc.</p>
+                {topAssets.map((asset: any) => (
+                  <div key={asset.symbol} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium leading-none">{asset.symbol}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{asset.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold">{formatCurrency(asset.price)}</p>
+                      <p className={`text-xs flex items-center justify-end font-medium ${asset.change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {asset.change >= 0 ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
+                        {asset.changePercent.toFixed(2)}%
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">$175.43</p>
-                    <p className="text-xs text-primary flex items-center justify-end font-medium">
-                      <ArrowUpRight className="h-3 w-3 mr-0.5" /> +1.2%
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium leading-none">TSLA</p>
-                    <p className="text-xs text-muted-foreground mt-1">Tesla Inc.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">$214.12</p>
-                    <p className="text-xs text-destructive flex items-center justify-end font-medium">
-                      <ArrowDownRight className="h-3 w-3 mr-0.5" /> -3.4%
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium leading-none">NVDA</p>
-                    <p className="text-xs text-muted-foreground mt-1">NVIDIA Corp.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">$890.00</p>
-                    <p className="text-xs text-primary flex items-center justify-end font-medium">
-                      <ArrowUpRight className="h-3 w-3 mr-0.5" /> +4.2%
-                    </p>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
 
           {/* Recent Activity */}
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm flex-1">
+          <Card className="border-muted bg-card/50 backdrop-blur-sm flex-1">
             <CardHeader className="pb-4">
               <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                    <span className="text-xs font-bold text-primary">BUY</span>
+                {orders && orders.length > 0 ? orders.map((order: any) => (
+                  <div key={order.id} className="flex items-start gap-4">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border ${order.side === 'BUY' ? 'bg-primary/10 border-primary/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                      <span className={`text-xs font-bold ${order.side === 'BUY' ? 'text-primary' : 'text-red-500'}`}>{order.side}</span>
+                    </div>
+                    <div className="grid gap-1">
+                      <p className="text-sm font-medium leading-none">
+                        {order.side === 'BUY' ? 'Bought' : 'Sold'} {order.quantity} {order.symbol}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {order.type} order executed at {formatCurrency(order.executionPrice)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(order.createdAt).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="grid gap-1">
-                    <p className="text-sm font-medium leading-none">Bought 15 AAPL</p>
-                    <p className="text-xs text-muted-foreground">Market order executed at $175.43</p>
-                    <p className="text-xs text-muted-foreground">2 hours ago</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-4">
-                  <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 border border-destructive/20">
-                    <span className="text-xs font-bold text-destructive">SELL</span>
-                  </div>
-                  <div className="grid gap-1">
-                    <p className="text-sm font-medium leading-none">Sold 10 TSLA</p>
-                    <p className="text-xs text-muted-foreground">Limit order executed at $214.12</p>
-                    <p className="text-xs text-muted-foreground">5 hours ago</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 border border-border">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="grid gap-1">
-                    <p className="text-sm font-medium leading-none">Deposit Received</p>
-                    <p className="text-xs text-muted-foreground">Successfully added $100,000 to buying power.</p>
-                    <p className="text-xs text-muted-foreground">Yesterday</p>
-                  </div>
-                </div>
+                )) : (
+                  <div className="text-sm text-muted-foreground py-4">No recent activity.</div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -157,4 +157,16 @@ export class TradingService {
 
     return result;
   }
+
+  async getOrders(userId: string): Promise<JSendResponse<any>> {
+    const orders = await this.prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+    return {
+      status: 'success',
+      data: orders,
+    };
+  }
 }
