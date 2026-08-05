@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JSendResponse } from '@alpha/types';
-import type { Portfolio, Position } from '@prisma/client';
+import type { Portfolio, Position } from '@alpha/db';
 
 type PortfolioWithPositions = Portfolio & { positions: Position[] };
 

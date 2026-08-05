@@ -16,7 +16,7 @@ export class TradingService {
   ): Promise<JSendResponse<Record<string, unknown>>> {
     const { symbol, side, quantity } = orderDto;
 
-    return this.prisma.$transaction(async (tx) => {
+    return await this.prisma.$transaction(async (tx) => {
       // 1. Fetch User's Portfolio
       let portfolio = await tx.portfolio.findUnique({
         where: { userId },
