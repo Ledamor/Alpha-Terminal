@@ -46,8 +46,10 @@ class SocketService {
     callback: ServerToClientEvents[K]
   ) {
     if (this.socket) {
-      // Cast the callback to satisfy socket.io's internal types without using any
-      this.socket.on(event as string, callback as (...args: unknown[]) => void);
+      // socket.io's overloaded types cannot properly infer generic callback mappings. 
+      // The wrapper itself provides type safety, so we safely cast internally.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.socket.on(event, callback as any);
     }
   }
 
@@ -56,7 +58,8 @@ class SocketService {
     callback: ServerToClientEvents[K]
   ) {
     if (this.socket) {
-      this.socket.off(event as string, callback as (...args: unknown[]) => void);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.socket.off(event, callback as any);
     }
   }
 }
