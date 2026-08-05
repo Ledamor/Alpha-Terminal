@@ -15,7 +15,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: { sub: string; email: string }) {
     const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub }
+      where: { id: payload.sub },
     });
 
     if (!user) {
@@ -26,6 +26,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Please verify your email address first');
     }
 
-    return { userId: payload.sub, email: payload.email, username: user.username };
+    return {
+      userId: payload.sub,
+      email: payload.email,
+      username: user.username,
+    };
   }
 }

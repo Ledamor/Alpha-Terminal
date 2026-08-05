@@ -1,4 +1,5 @@
 import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import type { Request as ExpressRequest } from 'express';
 import { PortfolioService } from './portfolio.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -8,7 +9,8 @@ export class PortfolioController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  getMyPortfolio(@Request() req: any) {
-    return this.portfolioService.getMyPortfolio(req.user.userId);
+  getMyPortfolio(@Request() req: ExpressRequest) {
+    // req.user is populated by our JwtStrategy, safe because of express.d.ts
+    return this.portfolioService.getMyPortfolio(req.user!.userId);
   }
 }

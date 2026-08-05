@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketService } from './market.service';
 import { ExecuteOrderInput, JSendResponse } from '@alpha/types';
@@ -7,16 +7,19 @@ import { ExecuteOrderInput, JSendResponse } from '@alpha/types';
 export class TradingService {
   constructor(
     private prisma: PrismaService,
-    private marketService: MarketService
+    private marketService: MarketService,
   ) {}
 
-  async executeOrder(userId: string, orderDto: ExecuteOrderInput): Promise<JSendResponse<any>> {
+  async executeOrder(
+    userId: string,
+    orderDto: ExecuteOrderInput,
+  ): Promise<JSendResponse<Record<string, unknown>>> {
     const { symbol, side, quantity } = orderDto;
-    
+
     return this.prisma.$transaction(async (tx) => {
       // 1. Fetch User's Portfolio
       let portfolio = await tx.portfolio.findUnique({
-        where: { userId }
+        where: { userId },
       });
 
       // Lazily create it if they registered before we added automatic portfolio creation
@@ -24,45 +27,50 @@ export class TradingService {
         portfolio = await tx.portfolio.create({
           data: {
             userId,
-            balance: 100000.00
-          }
+            balance: 100000.0,
+          },
         });
       }
 
       // 2. Get secure market price from internal service
-      const executionPrice = await this.marketService.getCurrentPrice(symbol);
+      const executionPrice = this.marketService.getCurrentPrice(symbol);
       const totalCost = Number(executionPrice) * Number(quantity);
 
       // 3. Process Logic based on side
       if (side === 'BUY') {
         if (Number(portfolio.balance) < totalCost) {
-          throw new BadRequestException(`Insufficient funds. Cost is $${totalCost.toFixed(2)}, but balance is $${Number(portfolio.balance).toFixed(2)}.`);
+          throw new BadRequestException(
+            `Insufficient funds. Cost is $${totalCost.toFixed(2)}, but balance is $${Number(portfolio.balance).toFixed(2)}.`,
+          );
         }
 
         // Deduct balance
         await tx.portfolio.update({
           where: { id: portfolio.id },
-          data: { balance: { decrement: totalCost } }
+          data: { balance: { decrement: totalCost } },
         });
 
         // Upsert Position
         const existingPosition = await tx.position.findUnique({
-          where: { portfolioId_symbol: { portfolioId: portfolio.id, symbol } }
+          where: { portfolioId_symbol: { portfolioId: portfolio.id, symbol } },
         });
 
         if (existingPosition) {
           // Calculate new average price
-          const oldTotalCost = Number(existingPosition.quantity) * Number(existingPosition.averagePrice);
+          const oldTotalCost =
+            Number(existingPosition.quantity) *
+            Number(existingPosition.averagePrice);
           const newTotalCost = oldTotalCost + totalCost;
-          const newQuantity = Number(existingPosition.quantity) + Number(quantity);
+          const newQuantity =
+            Number(existingPosition.quantity) + Number(quantity);
           const newAveragePrice = newTotalCost / newQuantity;
 
           await tx.position.update({
             where: { id: existingPosition.id },
             data: {
               quantity: newQuantity,
-              averagePrice: newAveragePrice
-            }
+              averagePrice: newAveragePrice,
+            },
           });
         } else {
           await tx.position.create({
@@ -70,38 +78,44 @@ export class TradingService {
               portfolioId: portfolio.id,
               symbol,
               quantity,
-              averagePrice: executionPrice
-            }
+              averagePrice: executionPrice,
+            },
           });
         }
       } else if (side === 'SELL') {
         // Find existing position
         const existingPosition = await tx.position.findUnique({
-          where: { portfolioId_symbol: { portfolioId: portfolio.id, symbol } }
+          where: { portfolioId_symbol: { portfolioId: portfolio.id, symbol } },
         });
 
-        if (!existingPosition || Number(existingPosition.quantity) < Number(quantity)) {
-          throw new BadRequestException(`Insufficient shares. You only own ${existingPosition ? Number(existingPosition.quantity) : 0} shares of ${symbol}.`);
+        if (
+          !existingPosition ||
+          Number(existingPosition.quantity) < Number(quantity)
+        ) {
+          throw new BadRequestException(
+            `Insufficient shares. You only own ${existingPosition ? Number(existingPosition.quantity) : 0} shares of ${symbol}.`,
+          );
         }
 
         // Add to balance
         await tx.portfolio.update({
           where: { id: portfolio.id },
-          data: { balance: { increment: totalCost } }
+          data: { balance: { increment: totalCost } },
         });
 
-        const newQuantity = Number(existingPosition.quantity) - Number(quantity);
+        const newQuantity =
+          Number(existingPosition.quantity) - Number(quantity);
 
         if (newQuantity === 0) {
           // Close position
           await tx.position.delete({
-            where: { id: existingPosition.id }
+            where: { id: existingPosition.id },
           });
         } else {
           // Reduce position
           await tx.position.update({
             where: { id: existingPosition.id },
-            data: { quantity: newQuantity }
+            data: { quantity: newQuantity },
           });
         }
       }
@@ -116,8 +130,8 @@ export class TradingService {
           type: 'MARKET',
           status: 'EXECUTED',
           quantity,
-          executionPrice
-        }
+          executionPrice,
+        },
       });
 
       return {
@@ -128,8 +142,8 @@ export class TradingService {
           side,
           quantity,
           executionPrice,
-          totalCost
-        }
+          totalCost,
+        },
       };
     });
   }

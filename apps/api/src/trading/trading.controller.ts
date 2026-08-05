@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UsePipes, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UsePipes,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
+import type { Request as ExpressRequest } from 'express';
 import { TradingService } from './trading.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { executeOrderSchema } from '@alpha/validation';
@@ -12,8 +20,11 @@ export class TradingController {
   @Post('order')
   @UseGuards(JwtAuthGuard)
   @UsePipes(new ZodValidationPipe(executeOrderSchema))
-  executeOrder(@Request() req: any, @Body() orderDto: ExecuteOrderInput) {
+  executeOrder(
+    @Request() req: ExpressRequest,
+    @Body() orderDto: ExecuteOrderInput,
+  ) {
     // req.user is populated by our JwtStrategy (contains userId)
-    return this.tradingService.executeOrder(req.user.userId, orderDto);
+    return this.tradingService.executeOrder(req.user!.userId, orderDto);
   }
 }

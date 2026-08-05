@@ -1,6 +1,15 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoginInput, RegisterInput, VerifyOtpInput, JSendResponse } from '@alpha/types';
+import {
+  LoginInput,
+  RegisterInput,
+  VerifyOtpInput,
+  JSendResponse,
+} from '@alpha/types';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 
@@ -8,12 +17,14 @@ import { JwtService } from '@nestjs/jwt';
 export class AuthService {
   constructor(
     private prisma: PrismaService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterInput): Promise<JSendResponse<{ email: string }>> {
+  async register(
+    registerDto: RegisterInput,
+  ): Promise<JSendResponse<{ email: string }>> {
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: registerDto.email }
+      where: { email: registerDto.email },
     });
 
     if (existingUser) {
@@ -21,7 +32,7 @@ export class AuthService {
     }
 
     const existingUsername = await this.prisma.user.findUnique({
-      where: { username: registerDto.username }
+      where: { username: registerDto.username },
     });
 
     if (existingUsername) {
@@ -42,8 +53,8 @@ export class AuthService {
         passwordHash,
         otpCode,
         otpExpiresAt,
-        isVerified: false
-      }
+        isVerified: false,
+      },
     });
 
     // MOCK EMAIL SENDING
@@ -55,14 +66,16 @@ export class AuthService {
     return {
       status: 'success',
       data: {
-        email: registerDto.email
-      }
+        email: registerDto.email,
+      },
     };
   }
 
-  async verifyOtp(verifyOtpDto: VerifyOtpInput): Promise<JSendResponse<{ token: string }>> {
+  async verifyOtp(
+    verifyOtpDto: VerifyOtpInput,
+  ): Promise<JSendResponse<{ token: string }>> {
     const user = await this.prisma.user.findUnique({
-      where: { email: verifyOtpDto.email }
+      where: { email: verifyOtpDto.email },
     });
 
     if (!user) {
@@ -88,16 +101,16 @@ export class AuthService {
         data: {
           isVerified: true,
           otpCode: null,
-          otpExpiresAt: null
-        }
+          otpExpiresAt: null,
+        },
       });
 
       // Give them a starting balance of $100,000
       await tx.portfolio.create({
         data: {
           userId: user.id,
-          balance: 100000.00
-        }
+          balance: 100000.0,
+        },
       });
     });
 
@@ -105,21 +118,24 @@ export class AuthService {
 
     return {
       status: 'success',
-      data: { token }
+      data: { token },
     };
   }
 
   async login(loginDto: LoginInput): Promise<JSendResponse<{ token: string }>> {
     const user = await this.prisma.user.findUnique({
-      where: { email: loginDto.email }
+      where: { email: loginDto.email },
     });
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
-    
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.passwordHash,
+    );
+
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -127,12 +143,12 @@ export class AuthService {
     if (!user.isVerified) {
       throw new UnauthorizedException('Please verify your email address first');
     }
-    
+
     const token = this.jwtService.sign({ sub: user.id, email: user.email });
 
     return {
       status: 'success',
-      data: { token }
+      data: { token },
     };
   }
 }

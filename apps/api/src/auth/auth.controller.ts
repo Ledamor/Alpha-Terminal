@@ -1,7 +1,20 @@
-import { Controller, Post, Body, Get, UsePipes, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UsePipes,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
+import type { Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { loginSchema, registerSchema, verifyOtpSchema } from '@alpha/validation';
+import {
+  loginSchema,
+  registerSchema,
+  verifyOtpSchema,
+} from '@alpha/validation';
 import type { LoginInput, RegisterInput, VerifyOtpInput } from '@alpha/types';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -29,10 +42,10 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getProfile(@Request() req: any) {
+  getProfile(@Request() req: ExpressRequest) {
     return {
       status: 'success',
-      data: req.user
+      data: req.user,
     };
   }
 }
