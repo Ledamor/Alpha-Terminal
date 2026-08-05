@@ -38,7 +38,7 @@ function LoginPage() {
     onSuccess: (data) => {
       // data.data is the JSend data object which contains the token
       if (data.data?.token) {
-        login(data.data.token)
+        login()
       }
       navigate({ to: '/dashboard' })
     },
