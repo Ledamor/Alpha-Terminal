@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { api } from '../lib/axios'
+import { socketService } from '../lib/socket'
 import {
   Card,
   CardContent,
@@ -56,7 +57,37 @@ const mockAssets: Asset[] = [
 
 function Market() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [assets, setAssets] = useState<Asset[]>(mockAssets)
   const [selectedAsset, setSelectedAsset] = useState<Asset>(mockAssets[0])
+
+  useEffect(() => {
+    socketService.connect();
+    
+    socketService.on('PRICE_UPDATED', (data: { symbol: string, price: number }) => {
+      setAssets(prev => prev.map(a => {
+        if (a.symbol === data.symbol) {
+          const prevClose = a.price - a.change;
+          const change = data.price - prevClose;
+          const changePercent = (change / prevClose) * 100;
+          return {
+            ...a,
+            price: data.price,
+            change,
+            changePercent,
+            chartData: [...a.chartData, { time: new Date().toLocaleTimeString(), price: data.price }].slice(-30)
+          }
+        }
+        return a;
+      }));
+    });
+
+    return () => socketService.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const updated = assets.find(a => a.symbol === selectedAsset.symbol);
+    if (updated) setSelectedAsset(updated);
+  }, [assets, selectedAsset.symbol]);
   
   // Order Panel State
   const [orderSide, setOrderSide] = useState<'BUY' | 'SELL'>('BUY')
@@ -69,13 +100,13 @@ function Market() {
   const queryClient = useQueryClient()
 
   const filteredAssets = useMemo(() => {
-    if (!searchQuery) return mockAssets
-    return mockAssets.filter(
+    if (!searchQuery) return assets
+    return assets.filter(
       (a) =>
         a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
         a.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
-  }, [searchQuery])
+  }, [searchQuery, assets])
 
   const qty = parseFloat(quantity) || 0
   const estimatedCost = (qty * selectedAsset.price).toFixed(2)
