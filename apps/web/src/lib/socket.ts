@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 // define events from server -> client
 interface ServerToClientEvents {
   PRICE_UPDATED: (payload: { symbol: string; price: number; timestamp: string }) => void;
-  ORDER_EXECUTED: (payload: { id: string; symbol: string; status: string; quantity: number; executionPrice?: number }) => void;
+  ORDER_EXECUTED: (payload: { id?: string; symbol: string; side?: string; status?: string; quantity: number; executionPrice?: number; totalCost?: number; newBalance?: number }) => void;
 }
 
 // optionally client -> server events:

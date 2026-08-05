@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketService } from './market.service';
+import { MarketGateway } from './market.gateway';
 import { ExecuteOrderInput, JSendResponse } from '@alpha/types';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class TradingService {
   constructor(
     private prisma: PrismaService,
     private marketService: MarketService,
+    private marketGateway: MarketGateway,
   ) {}
 
   async executeOrder(
@@ -16,7 +18,7 @@ export class TradingService {
   ): Promise<JSendResponse<Record<string, unknown>>> {
     const { symbol, side, quantity } = orderDto;
 
-    return await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // 1. Fetch User's Portfolio
       let portfolio = await tx.portfolio.findUnique({
         where: { userId },
@@ -135,7 +137,7 @@ export class TradingService {
       });
 
       return {
-        status: 'success',
+        status: 'success' as const,
         data: {
           orderId: order.id,
           symbol,
@@ -143,8 +145,14 @@ export class TradingService {
           quantity,
           executionPrice,
           totalCost,
+          newBalance: Number(portfolio.balance) + (side === 'SELL' ? totalCost : -totalCost),
         },
       };
     });
+
+    // Broadcast real-time order execution event over WebSocket
+    this.marketGateway.emitOrderExecuted(result.data);
+
+    return result;
   }
 }
