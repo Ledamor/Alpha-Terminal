@@ -11,7 +11,7 @@ export const Route = createFileRoute('/_dashboard')({
 })
 
 function DashboardLayout() {
-  const { isAuthenticated, logout } = useAuth()
+  const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
 
   const { data: portfolioRes } = useQuery({
@@ -25,7 +25,7 @@ function DashboardLayout() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate({ to: '/' })
+      navigate({ to: '/login' })
     }
   }, [isAuthenticated, navigate])
 
@@ -108,11 +108,11 @@ function DashboardLayout() {
               <DropdownMenuTrigger asChild>
                 <Avatar className="h-8 w-8 cursor-pointer border border-border transition-opacity hover:opacity-80">
                   <AvatarImage src="https://github.com/shadcn.png" alt="@user" />
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarFallback>{user?.username?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 mt-1">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>@{user?.username || 'Account'}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <Settings className="mr-2 h-4 w-4" />

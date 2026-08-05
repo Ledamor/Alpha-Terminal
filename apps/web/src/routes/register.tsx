@@ -1,174 +1,177 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { registerSchema, verifyOtpSchema } from '@alpha/validation'
+import type { RegisterInput, VerifyOtpInput } from '@alpha/types'
 import { api } from '../lib/axios'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter, Input, Label, Button } from '@alpha/ui'
-import { Activity, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/auth-context'
+import { useState } from 'react'
 
 export const Route = createFileRoute('/register')({
   component: RegisterPage,
 })
 
 function RegisterPage() {
-  const [email, setEmail] = useState('')
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate({ to: '/dashboard' })
-    }
-  }, [isAuthenticated, navigate])
-
-  const registerMutation = useMutation({
-    mutationFn: async () => {
-      const response = await api.post('/auth/register', {
-        email,
-        username,
-        password,
-        confirmPassword
-      })
-      return response.data
-    },
-    onSuccess: () => {
-      // Navigate to OTP verification page and pass the email via search params
-      navigate({ 
-        to: '/verify-email', 
-        search: { email } 
-      })
-    },
-    onError: (err: AxiosError) => {
-      const data = err.response?.data as { message?: string | string[] } | undefined
-      if (data?.message) {
-        setError(Array.isArray(data.message) ? data.message.join(', ') : data.message)
-      } else {
-        setError('An unexpected error occurred. Is the API server running?')
-      }
-    }
+  const { login } = useAuth()
+  const [error, setError] = useState<string | null>(null)
+  const [step, setStep] = useState<'register' | 'otp'>('register')
+  const [emailToVerify, setEmailToVerify] = useState<string>('')
+  
+  const registerForm = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      return
+  const otpForm = useForm<VerifyOtpInput>({
+    resolver: zodResolver(verifyOtpSchema),
+  })
+
+  const onRegisterSubmit = async (data: RegisterInput) => {
+    try {
+      setError(null)
+      await api.post('/auth/register', data)
+      setEmailToVerify(data.email)
+      otpForm.setValue('email', data.email)
+      setStep('otp')
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to register')
     }
-    registerMutation.mutate()
+  }
+
+  const onOtpSubmit = async (data: VerifyOtpInput) => {
+    try {
+      setError(null)
+      await api.post('/auth/verify-otp', data)
+      await login() // Populate user state
+      navigate({ to: '/market' })
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to verify OTP')
+    }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4">
-      <Card className="w-full max-w-md border-border/50 bg-card/50 backdrop-blur-sm shadow-xl">
-        <CardHeader className="space-y-4 items-center text-center pb-8">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-            <Activity className="h-6 w-6 text-primary" />
-          </div>
-          <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold tracking-tight">Create an Account</CardTitle>
-            <CardDescription className="text-base">
-              Join Alpha Terminal today
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="m@example.com" 
-                  required 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-background/50 h-11"
-                />
-              </div>
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground dark p-4">
+      <div className="w-full max-w-md bg-card border border-border rounded-xl shadow-lg p-8 relative">
+        <button 
+          onClick={() => navigate({ to: '/login' })}
+          className="absolute top-4 left-4 p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted"
+          aria-label="Back to login"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
 
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input 
-                  id="username" 
-                  type="text" 
-                  placeholder="johndoe" 
-                  required 
-                  minLength={3}
-                  maxLength={30}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="bg-background/50 h-11"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    required 
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-background/50 h-11 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
+        <div className="mb-8 text-center mt-2">
+          <h1 className="text-3xl font-bold text-primary mb-2">Alpha Terminal</h1>
+          <p className="text-muted-foreground">
+            {step === 'register' ? 'Create a new account' : 'Verify your email'}
+          </p>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
-                  <Input 
-                    id="confirmPassword" 
-                    type={showPassword ? "text" : "password"} 
-                    required 
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="bg-background/50 h-11 pr-10"
-                  />
-                </div>
-              </div>
+        {error && (
+          <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg mb-6 text-sm">
+            {error}
+          </div>
+        )}
+
+        {step === 'register' ? (
+          <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Username</label>
+              <input
+                {...registerForm.register('username')}
+                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="johndoe"
+              />
+              {registerForm.formState.errors.username && (
+                <p className="text-destructive text-xs mt-1">{registerForm.formState.errors.username.message}</p>
+              )}
             </div>
-            
-            {error && (
-              <div className="p-3 text-sm font-medium text-destructive bg-destructive/10 rounded-md border border-destructive/20">
-                {error}
-              </div>
-            )}
 
-            <Button 
-              type="submit" 
-              className="w-full h-11 text-base font-semibold"
-              disabled={registerMutation.isPending}
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input
+                {...registerForm.register('email')}
+                type="email"
+                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="you@example.com"
+              />
+              {registerForm.formState.errors.email && (
+                <p className="text-destructive text-xs mt-1">{registerForm.formState.errors.email.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Password</label>
+              <input
+                {...registerForm.register('password')}
+                type="password"
+                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="••••••••"
+              />
+              {registerForm.formState.errors.password && (
+                <p className="text-destructive text-xs mt-1">{registerForm.formState.errors.password.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Confirm Password</label>
+              <input
+                {...registerForm.register('confirmPassword')}
+                type="password"
+                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="••••••••"
+              />
+              {registerForm.formState.errors.confirmPassword && (
+                <p className="text-destructive text-xs mt-1">{registerForm.formState.errors.confirmPassword.message}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={registerForm.formState.isSubmitting}
+              className="w-full bg-primary text-primary-foreground font-semibold py-2 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 mt-6"
             >
-              {registerMutation.isPending ? "Creating account..." : "Sign up"}
-            </Button>
+              {registerForm.formState.isSubmitting ? 'Creating account...' : 'Create Account'}
+            </button>
           </form>
-        </CardContent>
-        <CardFooter className="justify-center border-t border-border/50 pt-6 text-sm text-muted-foreground">
+        ) : (
+          <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
+            <div className="text-sm text-center mb-4 text-muted-foreground">
+              We've sent a 6-digit code to <strong>{emailToVerify}</strong>.
+              <br/>(Check your backend console for the mock email!)
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">6-Digit Code</label>
+              <input
+                {...otpForm.register('code')}
+                autoComplete="one-time-code"
+                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-center tracking-widest text-lg"
+                placeholder="000000"
+                maxLength={6}
+              />
+              {otpForm.formState.errors.code && (
+                <p className="text-destructive text-xs mt-1">{otpForm.formState.errors.code.message}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={otpForm.formState.isSubmitting}
+              className="w-full bg-primary text-primary-foreground font-semibold py-2 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 mt-6"
+            >
+              {otpForm.formState.isSubmitting ? 'Verifying...' : 'Verify & Continue'}
+            </button>
+          </form>
+        )}
+
+        <div className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link to="/" className="font-semibold text-primary hover:underline ml-1">
-            Sign in
+          <Link to="/login" className="text-primary hover:underline">
+            Sign in here
           </Link>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

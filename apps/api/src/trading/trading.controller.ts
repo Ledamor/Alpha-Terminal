@@ -33,11 +33,15 @@ export class TradingController {
   }
 
   @Post('order')
+  @UseGuards(JwtAuthGuard)
   executeOrder(
     @Request() req: ExpressRequest,
     @Body() orderDto: ExecuteOrderInput,
   ) {
-    const userId = req.user?.userId || 'demo-user-id';
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new Error('User ID not found on authenticated request');
+    }
     return this.tradingService.executeOrder(userId, orderDto);
   }
 }
