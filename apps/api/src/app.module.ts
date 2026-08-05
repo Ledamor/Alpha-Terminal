@@ -7,8 +7,15 @@ import { TradingModule } from './trading/trading.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { RedisModule } from './common/redis/redis.module';
 
+import { BullModule } from '@nestjs/bullmq';
+
 @Module({
   imports: [
+    BullModule.forRoot({
+      connection: {
+        url: process.env.REDIS_URL || 'redis://localhost:6379',
+      },
+    }),
     PrismaModule,
     RedisModule,
     AuthModule,

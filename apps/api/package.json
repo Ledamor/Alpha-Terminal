@@ -45,6 +45,7 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
+    "yahoo-finance2": "^4.0.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

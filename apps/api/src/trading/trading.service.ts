@@ -33,7 +33,7 @@ export class TradingService {
       }
 
       // 2. Get secure market price from internal service
-      const executionPrice = this.marketService.getCurrentPrice(symbol);
+      const executionPrice = await this.marketService.getCurrentPrice(symbol);
       const totalCost = Number(executionPrice) * Number(quantity);
 
       // 3. Process Logic based on side
