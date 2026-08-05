@@ -9,7 +9,8 @@ import { Injectable, Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
   },
 })
 @Injectable()
