@@ -1,35 +1,53 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { api } from '../lib/axios'
+
+interface User {
+  userId: string;
+  email: string;
+  username: string;
+}
 
 interface AuthContextType {
-  token: string | null
+  user: User | null
   isAuthenticated: boolean
-  login: (token: string) => void
-  logout: () => void
+  isLoading: boolean
+  login: () => Promise<void> // Doesn't need a token argument now!
+  logout: () => Promise<void>
+  checkAuth: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    // Check for token on mount
-    const storedToken = localStorage.getItem('alpha_token')
-    if (storedToken) {
-      setToken(storedToken)
+  const checkAuth = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      setUser(response.data.data);
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false)
+  };
+
+  useEffect(() => {
+    checkAuth();
   }, [])
 
-  const login = (newToken: string) => {
-    localStorage.setItem('alpha_token', newToken)
-    setToken(newToken)
+  const login = async () => {
+    await checkAuth(); // We just call this after a successful login API call sets the cookie
   }
 
-  const logout = () => {
-    localStorage.removeItem('alpha_token')
-    setToken(null)
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } finally {
+      setUser(null);
+      window.location.href = '/login';
+    }
   }
 
   if (isLoading) {
@@ -37,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ token, isAuthenticated: !!token, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   )

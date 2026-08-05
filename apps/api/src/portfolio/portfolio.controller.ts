@@ -8,8 +8,12 @@ export class PortfolioController {
   constructor(private readonly portfolioService: PortfolioService) {}
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   getMyPortfolio(@Request() req: ExpressRequest) {
-    const userId = req.user?.userId || 'demo-user-id';
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new Error('User ID not found on authenticated request');
+    }
     return this.portfolioService.getMyPortfolio(userId);
   }
 }

@@ -6,8 +6,10 @@ import {
   UsePipes,
   UseGuards,
   Request,
+  Res,
+  UnauthorizedException,
 } from '@nestjs/common';
-import type { Request as ExpressRequest } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
 import { AuthService } from './auth.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
@@ -18,9 +20,26 @@ import {
 import type { LoginInput, RegisterInput, VerifyOtpInput } from '@alpha/types';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+};
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private setCookies(res: Response, accessToken: string, refreshToken: string) {
+    res.cookie('accessToken', accessToken, {
+      ...COOKIE_OPTIONS,
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+    res.cookie('refreshToken', refreshToken, {
+      ...COOKIE_OPTIONS,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+  }
 
   @Post('register')
   @UsePipes(new ZodValidationPipe(registerSchema))
@@ -30,14 +49,46 @@ export class AuthController {
 
   @Post('verify-otp')
   @UsePipes(new ZodValidationPipe(verifyOtpSchema))
-  verifyOtp(@Body() verifyOtpDto: VerifyOtpInput) {
-    return this.authService.verifyOtp(verifyOtpDto);
+  async verifyOtp(
+    @Body() verifyOtpDto: VerifyOtpInput,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.verifyOtp(verifyOtpDto);
+    this.setCookies(res, tokens.accessToken, tokens.refreshToken);
+    return { status: 'success' };
   }
 
   @Post('login')
   @UsePipes(new ZodValidationPipe(loginSchema))
-  login(@Body() loginDto: LoginInput) {
-    return this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginInput,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.login(loginDto);
+    this.setCookies(res, tokens.accessToken, tokens.refreshToken);
+    return { status: 'success' };
+  }
+
+  @Post('refresh')
+  async refresh(
+    @Request() req: ExpressRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const cookies = req.cookies as Record<string, string> | undefined;
+    const oldRefreshToken = cookies?.refreshToken;
+    if (!oldRefreshToken) {
+      throw new UnauthorizedException('No refresh token provided');
+    }
+    const tokens = await this.authService.refresh(oldRefreshToken);
+    this.setCookies(res, tokens.accessToken, tokens.refreshToken);
+    return { status: 'success' };
+  }
+
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+    return { status: 'success' };
   }
 
   @Get('me')

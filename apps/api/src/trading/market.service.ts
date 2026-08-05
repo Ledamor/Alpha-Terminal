@@ -11,12 +11,12 @@ import { YahooFinanceService } from './yahoo-finance.service';
 const SUPPORTED_SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'META'];
 
 const FALLBACK_PRICES: Record<string, number> = {
-  AAPL: 224.50,
-  TSLA: 218.80,
-  NVDA: 124.70,
-  MSFT: 416.30,
-  AMZN: 186.20,
-  META: 518.40,
+  AAPL: 224.5,
+  TSLA: 218.8,
+  NVDA: 124.7,
+  MSFT: 416.3,
+  AMZN: 186.2,
+  META: 518.4,
 };
 
 @Injectable()
@@ -53,7 +53,6 @@ export class MarketService implements OnModuleInit {
   }
 
   async getAllAssets() {
-    const liveQuotes = await this.yahooFinanceService.getQuotes(SUPPORTED_SYMBOLS);
     const assetList = [];
 
     const assetNames: Record<string, string> = {

@@ -49,7 +49,7 @@ function VerifyEmailPage() {
     },
     onSuccess: (data) => {
       if (data.data?.token) {
-        login(data.data.token)
+        login()
       }
       navigate({ to: '/dashboard' })
     },

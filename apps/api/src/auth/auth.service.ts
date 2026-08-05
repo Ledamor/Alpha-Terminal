@@ -71,28 +71,35 @@ export class AuthService {
     };
   }
 
-  async verifyOtp(
-    verifyOtpDto: VerifyOtpInput,
-  ): Promise<JSendResponse<{ token: string }>> {
+  private async generateTokens(userId: string, email: string) {
+    const payload = { sub: userId, email };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, { expiresIn: '15m' }),
+      this.jwtService.signAsync(payload, { expiresIn: '7d' }),
+    ]);
+
+    // Save refresh token to DB
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken }, // Note: In a true prod app, we'd hash this first.
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpInput) {
     const user = await this.prisma.user.findUnique({
       where: { email: verifyOtpDto.email },
     });
 
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-
-    if (user.isVerified) {
+    if (!user) throw new BadRequestException('User not found');
+    if (user.isVerified)
       throw new BadRequestException('User is already verified');
-    }
-
-    if (user.otpCode !== verifyOtpDto.code) {
+    if (user.otpCode !== verifyOtpDto.code)
       throw new BadRequestException('Invalid OTP code');
-    }
-
-    if (!user.otpExpiresAt || user.otpExpiresAt < new Date()) {
+    if (!user.otpExpiresAt || user.otpExpiresAt < new Date())
       throw new BadRequestException('OTP code has expired');
-    }
 
     // Mark as verified, clear OTP, and create their Portfolio
     await this.prisma.$transaction(async (tx) => {
@@ -105,7 +112,6 @@ export class AuthService {
         },
       });
 
-      // Give them a starting balance of $100,000
       await tx.portfolio.create({
         data: {
           userId: user.id,
@@ -114,41 +120,49 @@ export class AuthService {
       });
     });
 
-    const token = this.jwtService.sign({ sub: user.id, email: user.email });
-
-    return {
-      status: 'success',
-      data: { token },
-    };
+    return this.generateTokens(user.id, user.email);
   }
 
-  async login(loginDto: LoginInput): Promise<JSendResponse<{ token: string }>> {
+  async login(loginDto: LoginInput) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const isPasswordValid = await bcrypt.compare(
       loginDto.password,
       user.passwordHash,
     );
-
-    if (!isPasswordValid) {
+    if (!isPasswordValid)
       throw new UnauthorizedException('Invalid credentials');
-    }
 
-    if (!user.isVerified) {
+    if (!user.isVerified)
       throw new UnauthorizedException('Please verify your email address first');
+
+    return this.generateTokens(user.id, user.email);
+  }
+
+  async refresh(token: string) {
+    try {
+      // Verify token signature and expiration
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        email: string;
+      }>(token);
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+
+      // Ensure the refresh token matches what's in the DB
+      if (!user || user.refreshToken !== token) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      return this.generateTokens(user.id, user.email);
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
     }
-
-    const token = this.jwtService.sign({ sub: user.id, email: user.email });
-
-    return {
-      status: 'success',
-      data: { token },
-    };
   }
 }

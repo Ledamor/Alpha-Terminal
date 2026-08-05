@@ -62,7 +62,7 @@ function Market() {
   const [selectedAsset, setSelectedAsset] = useState<Asset>(mockAssets[0])
 
   // Fetch real market prices from Yahoo Finance via backend on load
-  const { data: initialPricesRes } = useQuery<{ symbol: string; name: string; price: number; change: number; changePercent: number; volume: string }[]>({
+  const { data: initialPricesRes, isLoading: isPricesLoading } = useQuery<{ symbol: string; name: string; price: number; change: number; changePercent: number; volume: string }[]>({
     queryKey: ['market-prices'],
     queryFn: async () => {
       const res = await api.get('/trading/prices')
@@ -216,6 +216,14 @@ function Market() {
       return
     }
     orderMutation.mutate()
+  }
+
+  if (isPricesLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center h-[calc(100vh-8rem)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (
