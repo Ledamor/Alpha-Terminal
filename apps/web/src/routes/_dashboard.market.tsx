@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useMemo, useEffect } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { api } from '../lib/axios'
 import { socketService } from '../lib/socket'
@@ -47,18 +47,49 @@ const generateMockChart = (startPrice: number, volatility: number) => {
 }
 
 const mockAssets: Asset[] = [
-  { symbol: 'AAPL', name: 'Apple Inc.', price: 175.43, change: 2.15, changePercent: 1.24, volume: '45.2M', chartData: generateMockChart(175.43, 0.04) },
-  { symbol: 'TSLA', name: 'Tesla Inc.', price: 214.12, change: -7.50, changePercent: -3.38, volume: '112.5M', chartData: generateMockChart(214.12, 0.08) },
-  { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 890.00, change: 35.50, changePercent: 4.15, volume: '68.1M', chartData: generateMockChart(890.00, 0.06) },
-  { symbol: 'MSFT', name: 'Microsoft Corp.', price: 415.20, change: 1.10, changePercent: 0.27, volume: '22.4M', chartData: generateMockChart(415.20, 0.03) },
-  { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 178.15, change: -1.25, changePercent: -0.70, volume: '38.9M', chartData: generateMockChart(178.15, 0.05) },
-  { symbol: 'META', name: 'Meta Platforms Inc.', price: 485.50, change: 12.30, changePercent: 2.60, volume: '18.7M', chartData: generateMockChart(485.50, 0.07) },
+  { symbol: 'AAPL', name: 'Apple Inc.', price: 224.50, change: 2.15, changePercent: 0.97, volume: '45.2M', chartData: generateMockChart(224.50, 0.03) },
+  { symbol: 'TSLA', name: 'Tesla Inc.', price: 218.80, change: -4.50, changePercent: -2.02, volume: '112.5M', chartData: generateMockChart(218.80, 0.05) },
+  { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 124.70, change: 3.50, changePercent: 2.89, volume: '68.1M', chartData: generateMockChart(124.70, 0.04) },
+  { symbol: 'MSFT', name: 'Microsoft Corp.', price: 416.30, change: 1.10, changePercent: 0.26, volume: '22.4M', chartData: generateMockChart(416.30, 0.02) },
+  { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 186.20, change: -1.25, changePercent: -0.67, volume: '38.9M', chartData: generateMockChart(186.20, 0.03) },
+  { symbol: 'META', name: 'Meta Platforms Inc.', price: 518.40, change: 12.30, changePercent: 2.43, volume: '18.7M', chartData: generateMockChart(518.40, 0.04) },
 ]
 
 function Market() {
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [assets, setAssets] = useState<Asset[]>(mockAssets)
   const [selectedAsset, setSelectedAsset] = useState<Asset>(mockAssets[0])
+
+  // Fetch real market prices from Yahoo Finance via backend on load
+  const { data: initialPricesRes } = useQuery<{ symbol: string; name: string; price: number; change: number; changePercent: number; volume: string }[]>({
+    queryKey: ['market-prices'],
+    queryFn: async () => {
+      const res = await api.get('/trading/prices')
+      return res.data.data
+    },
+    refetchOnWindowFocus: false,
+  })
+
+  useEffect(() => {
+    if (initialPricesRes && initialPricesRes.length > 0) {
+      const fetchedAssets: Asset[] = initialPricesRes.map((item) => ({
+        symbol: item.symbol,
+        name: item.name,
+        price: item.price,
+        change: item.change,
+        changePercent: item.changePercent,
+        volume: item.volume || '45.2M',
+        chartData: generateMockChart(item.price, 0.03),
+      }))
+
+      setAssets(fetchedAssets)
+      setSelectedAsset((prev) => {
+        const found = fetchedAssets.find((a) => a.symbol === prev.symbol)
+        return found || fetchedAssets[0]
+      })
+    }
+  }, [initialPricesRes])
 
   useEffect(() => {
     socketService.connect();
@@ -81,14 +112,44 @@ function Market() {
       }));
     });
 
+    socketService.on('ORDER_EXECUTED', (data: { symbol: string; side?: string; quantity: number; executionPrice?: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] })
+      setSuccess(`Real-time Execution: ${data.side || 'ORDER'} ${data.quantity} ${data.symbol} @ $${Number(data.executionPrice || 0).toFixed(2)}`)
+      setTimeout(() => setSuccess(null), 5000)
+    });
+
     return () => socketService.disconnect();
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
-    const updated = assets.find(a => a.symbol === selectedAsset.symbol);
-    if (updated) setSelectedAsset(updated);
-  }, [assets, selectedAsset.symbol]);
+    const updated = assets.find(a => a.symbol === selectedAsset.symbol)
+    if (updated) setSelectedAsset(updated)
+  }, [assets, selectedAsset.symbol])
   
+  // Portfolio Holdings Query
+  interface PositionItem {
+    symbol: string
+    quantity: number
+    averagePrice: number
+  }
+
+  interface PortfolioData {
+    balance: number
+    positions: PositionItem[]
+  }
+
+  const { data: portfolio } = useQuery<PortfolioData>({
+    queryKey: ['portfolio'],
+    queryFn: async () => {
+      const res = await api.get('/portfolio')
+      return res.data.data
+    },
+  })
+
+  const buyingPower = portfolio?.balance ? Number(portfolio.balance) : 100000.0
+  const currentPosition = portfolio?.positions?.find((p: PositionItem) => p.symbol === selectedAsset.symbol)
+  const ownedShares = currentPosition ? Number(currentPosition.quantity) : 0
+
   // Order Panel State
   const [orderSide, setOrderSide] = useState<'BUY' | 'SELL'>('BUY')
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET')
@@ -96,8 +157,6 @@ function Market() {
   
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-
-  const queryClient = useQueryClient()
 
   const filteredAssets = useMemo(() => {
     if (!searchQuery) return assets
@@ -109,7 +168,13 @@ function Market() {
   }, [searchQuery, assets])
 
   const qty = parseFloat(quantity) || 0
-  const estimatedCost = (qty * selectedAsset.price).toFixed(2)
+  const numericEstimatedCost = qty * selectedAsset.price
+  const estimatedCost = numericEstimatedCost.toFixed(2)
+
+  // Client Validation Checks
+  const isInsufficientFunds = orderSide === 'BUY' && numericEstimatedCost > buyingPower
+  const isInsufficientShares = orderSide === 'SELL' && qty > ownedShares
+  const isInvalidQty = qty <= 0
 
   const orderMutation = useMutation({
     mutationFn: async () => {
@@ -121,10 +186,8 @@ function Market() {
       return response.data
     },
     onSuccess: () => {
-      setSuccess(`Successfully ${orderSide === 'BUY' ? 'bought' : 'sold'} ${qty} shares of ${selectedAsset.symbol}!`)
       setQuantity('1')
       queryClient.invalidateQueries({ queryKey: ['portfolio'] })
-      setTimeout(() => setSuccess(null), 5000)
     },
     onError: (err: AxiosError) => {
       const data = err.response?.data as { message?: string | string[] } | undefined
@@ -140,8 +203,16 @@ function Market() {
   const handleOrder = () => {
     setError(null)
     setSuccess(null)
-    if (qty <= 0) {
+    if (isInvalidQty) {
       setError("Quantity must be greater than 0")
+      return
+    }
+    if (isInsufficientFunds) {
+      setError(`Insufficient buying power. You have $${buyingPower.toFixed(2)} available.`)
+      return
+    }
+    if (isInsufficientShares) {
+      setError(`Insufficient shares. You currently own ${ownedShares} shares of ${selectedAsset.symbol}.`)
       return
     }
     orderMutation.mutate()
@@ -367,6 +438,11 @@ function Market() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="quantity">Quantity (Shares)</Label>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {orderSide === 'BUY'
+                        ? `Available: $${buyingPower.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : `Owned: ${ownedShares} shares`}
+                    </span>
                   </div>
                   <Input 
                     id="quantity" 
@@ -398,14 +474,20 @@ function Market() {
                 </div>
                 <Button 
                   onClick={handleOrder}
-                  disabled={orderMutation.isPending}
+                  disabled={orderMutation.isPending || isInsufficientFunds || isInsufficientShares || isInvalidQty}
                   className={`w-full h-12 text-lg font-bold ${
                     orderSide === 'BUY' 
                       ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
                       : 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
                   }`}
                 >
-                  {orderMutation.isPending ? "Executing..." : `${orderSide} ${selectedAsset.symbol}`}
+                  {orderMutation.isPending 
+                    ? "Executing..." 
+                    : isInsufficientFunds 
+                    ? "Insufficient Funds" 
+                    : isInsufficientShares 
+                    ? "Insufficient Shares" 
+                    : `${orderSide} ${selectedAsset.symbol}`}
                 </Button>
               </div>
             </Card>

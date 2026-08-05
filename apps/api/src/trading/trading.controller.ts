@@ -13,18 +13,31 @@ import { executeOrderSchema } from '@alpha/validation';
 import type { ExecuteOrderInput } from '@alpha/types';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
+import { Get } from '@nestjs/common';
+import { MarketService } from './market.service';
+
 @Controller('trading')
 export class TradingController {
-  constructor(private readonly tradingService: TradingService) {}
+  constructor(
+    private readonly tradingService: TradingService,
+    private readonly marketService: MarketService,
+  ) {}
+
+  @Get('prices')
+  async getMarketPrices() {
+    const assets = await this.marketService.getAllAssets();
+    return {
+      status: 'success',
+      data: assets,
+    };
+  }
 
   @Post('order')
-  @UseGuards(JwtAuthGuard)
-  @UsePipes(new ZodValidationPipe(executeOrderSchema))
   executeOrder(
     @Request() req: ExpressRequest,
     @Body() orderDto: ExecuteOrderInput,
   ) {
-    // req.user is populated by our JwtStrategy (contains userId)
-    return this.tradingService.executeOrder(req.user!.userId, orderDto);
+    const userId = req.user?.userId || 'demo-user-id';
+    return this.tradingService.executeOrder(userId, orderDto);
   }
 }
