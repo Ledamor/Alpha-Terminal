@@ -14,7 +14,7 @@ export class AppController {
         status: 'ok',
         database: 'connected',
       });
-    } catch (e) {
+    } catch {
       return res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
         status: 'error',
         database: 'disconnected',

@@ -5,16 +5,11 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "start": "pnpm --filter @alpha/api start:prod"
   },
+  "packageManager": "pnpm@11.17.0",
   "devDependencies": {
     "turbo": "latest"
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.17.0",
-      "onFail": "download"
-    }
   }
 }
