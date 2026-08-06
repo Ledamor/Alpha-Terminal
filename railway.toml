@@ -1,0 +1,6 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm build --filter=@alpha/api"
+
+[deploy]
+startCommand = "pnpm --filter @alpha/api start:prod"
